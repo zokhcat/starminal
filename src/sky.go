@@ -182,7 +182,8 @@ func (m SkyModel) viewSky() string {
 
 	centerX := float64(skyW) / 2.0
 	centerY := float64(skyH) / 2.0
-	radius := math.Min(centerX, centerY)
+	radiusX := centerX - 1
+	radiusY := centerY - 1
 
 	for _, s := range m.stars {
 		altRad := s.Alt * math.Pi / 180.0
@@ -192,8 +193,8 @@ func (m SkyModel) viewSky() string {
 		px := r * math.Sin(azRad)
 		py := -r * math.Cos(azRad)
 
-		x := int(centerX + px*radius)
-		y := int(centerY + py*radius)
+		x := int(centerX + px*radiusX)
+		y := int(centerY + py*radiusY)
 
 		if x < 0 || x >= skyW || y < 0 || y >= skyH {
 			continue

@@ -49,7 +49,7 @@ func FilterCatalog(path string) StarCatalog {
 		if err != nil {
 			continue
 		}
-		if mag <= 15.0 {
+		if mag > 6 {
 			continue
 		}
 
