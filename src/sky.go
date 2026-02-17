@@ -29,6 +29,8 @@ type SkyModel struct {
 	width      int
 	height     int
 	pincode    string
+	lowerMag   float64
+	higerMag   float64
 	input      string
 	loaded     bool
 	err        string
@@ -37,9 +39,11 @@ type SkyModel struct {
 
 func NewSkyModel(catalog utils.StarCatalog) SkyModel {
 	return SkyModel{
-		catalog: catalog,
-		width:   120,
-		height:  40,
+		catalog:  catalog,
+		width:    120,
+		height:   40,
+		lowerMag: -2.0,
+		higerMag: 6.0,
 	}
 }
 
@@ -52,7 +56,8 @@ func (m SkyModel) loadStars() tea.Msg {
 	if err != nil {
 		return starsLoadedMsg{err: err}
 	}
-	stars := utils.GetVisibleStars(m.catalog, loc.Lat, loc.Lon)
+	filtered := utils.FilterCatalog(m.catalog, m.lowerMag, m.higerMag)
+	stars := utils.GetVisibleStars(filtered, loc.Lat, loc.Lon)
 	return starsLoadedMsg{stars: stars, location: loc}
 }
 
@@ -98,6 +103,16 @@ func (m SkyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case "s":
 				m.screenshot = ""
 				return m, m.takeScreenshot
+			case "left":
+				if m.higerMag > 1.0 {
+					m.higerMag -= 0.5
+					return m, m.loadStars
+				}
+			case "right":
+				if m.higerMag < 10.0 {
+					m.higerMag += 0.5
+					return m, m.loadStars
+				}
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -270,7 +285,7 @@ func (m SkyModel) viewSky() string {
 	sb.WriteRune('\n')
 
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	status := " [s] screenshot  [esc] new location  [q] quit"
+	status := " [←/→] magnitude  [s] screenshot  [esc] new location  [q] quit"
 	if m.screenshot != "" {
 		status += "  | " + m.screenshot
 	}
@@ -283,6 +298,7 @@ func (m SkyModel) buildInfoPanel() string {
 	dim := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
 	bright := lipgloss.NewStyle().Foreground(lipgloss.Color("255"))
 	label := lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
+	bar := lipgloss.NewStyle().Foreground(lipgloss.Color("75"))
 
 	var lines []string
 	lines = append(lines, label.Render("  Location "))
@@ -292,7 +308,21 @@ func (m SkyModel) buildInfoPanel() string {
 	lines = append(lines, dim.Render("  Lon:     ")+bright.Render(fmt.Sprintf("%.4f°", m.location.Lon)))
 	lines = append(lines, "")
 	lines = append(lines, label.Render("  Sky "))
-	lines = append(lines, dim.Render("  Stars: ")+bright.Render(fmt.Sprintf("%d", len(m.stars))))
+	lines = append(lines, dim.Render("  Stars:   ")+bright.Render(fmt.Sprintf("%d", len(m.stars))))
+	lines = append(lines, "")
+	lines = append(lines, label.Render("  Magnitude "))
+	lines = append(lines, dim.Render("  Max:     ")+bright.Render(fmt.Sprintf("%.1f", m.higerMag)))
+
+	sliderLen := 18
+	filled := int((m.higerMag - 1.0) / 9.0 * float64(sliderLen))
+	if filled > sliderLen {
+		filled = sliderLen
+	}
+	if filled < 0 {
+		filled = 0
+	}
+	slider := "  " + dim.Render("◄ ") + bar.Render(strings.Repeat("█", filled)) + dim.Render(strings.Repeat("░", sliderLen-filled)) + dim.Render(" ►")
+	lines = append(lines, slider)
 
 	return strings.Join(lines, "\n")
 }

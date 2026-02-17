@@ -15,7 +15,7 @@ var skyCmd = &cobra.Command{
 	Use:   "sky",
 	Short: "Render the stars in a sky",
 	Run: func(cmd *cobra.Command, args []string) {
-		catalog := utils.FilterCatalog("data/hyg_v42.csv")
+		catalog := utils.LoadCatalog("data/hyg_v42.csv")
 
 		model := src.NewSkyModel(catalog)
 		p := tea.NewProgram(model, tea.WithAltScreen())

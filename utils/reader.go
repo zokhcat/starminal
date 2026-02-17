@@ -23,7 +23,7 @@ type StarCatalog struct {
 	Stars []Star
 }
 
-func FilterCatalog(path string) StarCatalog {
+func LoadCatalog(path string) StarCatalog {
 	var catalog StarCatalog
 
 	f, err := os.Open(path)
@@ -49,9 +49,6 @@ func FilterCatalog(path string) StarCatalog {
 		if err != nil {
 			continue
 		}
-		if mag > 6 {
-			continue
-		}
 
 		ra, _ := strconv.ParseFloat(row[col["ra"]], 64)
 		dec, _ := strconv.ParseFloat(row[col["dec"]], 64)
@@ -70,4 +67,14 @@ func FilterCatalog(path string) StarCatalog {
 	}
 
 	return catalog
+}
+
+func FilterCatalog(catalog StarCatalog, minMag, maxMag float64) StarCatalog {
+	var filtered StarCatalog
+	for _, s := range catalog.Stars {
+		if s.Mag >= minMag && s.Mag <= maxMag {
+			filtered.Stars = append(filtered.Stars, s)
+		}
+	}
+	return filtered
 }
