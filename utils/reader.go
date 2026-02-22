@@ -10,6 +10,7 @@ import (
 
 type Star struct {
 	Id    string  `json:"id"`
+	Hip   int64   `json:"hip"`
 	Ra    float64 `json:"ra"`
 	Dec   float64 `json:"dec"`
 	Mag   float64 `json:"mag"`
@@ -46,6 +47,7 @@ func LoadCatalog(path string) StarCatalog {
 
 	for _, row := range records[1:] {
 		mag, err := strconv.ParseFloat(row[col["mag"]], 64)
+		hip, _ := strconv.ParseInt(row[col["hip"]], 10, 64)
 		if err != nil {
 			continue
 		}
@@ -56,6 +58,7 @@ func LoadCatalog(path string) StarCatalog {
 
 		catalog.Stars = append(catalog.Stars, Star{
 			Id:    row[col["id"]],
+			Hip:   hip,
 			Ra:    ra,
 			Dec:   dec,
 			Mag:   mag,

@@ -31,6 +31,9 @@ type SkyModel struct {
 	pincode    string
 	lowerMag   float64
 	higerMag   float64
+	zoom       float64
+	panX       float64
+	panY       float64
 	input      string
 	loaded     bool
 	err        string
@@ -43,7 +46,8 @@ func NewSkyModel(catalog utils.StarCatalog) SkyModel {
 		width:    120,
 		height:   40,
 		lowerMag: -2.0,
-		higerMag: 6.0,
+		higerMag: 1.0,
+		zoom:     1.0,
 	}
 }
 
@@ -100,9 +104,11 @@ func (m SkyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.input = ""
 				m.stars = nil
 				m.screenshot = ""
-			case "s":
+			case "p":
 				m.screenshot = ""
 				return m, m.takeScreenshot
+			case "s":
+				m.panY += 0.1 / m.zoom
 			case "left":
 				if m.higerMag > 1.0 {
 					m.higerMag -= 0.5
@@ -113,6 +119,29 @@ func (m SkyModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.higerMag += 0.5
 					return m, m.loadStars
 				}
+			case "+", "=":
+				if m.zoom < 8.0 {
+					m.zoom *= 1.5
+				}
+			case "-", "_":
+				if m.zoom > 1.0 {
+					m.zoom /= 1.5
+					if m.zoom < 1.0 {
+						m.zoom = 1.0
+						m.panX = 0
+						m.panY = 0
+					}
+				}
+			case "w":
+				m.panY -= 0.1 / m.zoom
+			case "a":
+				m.panX -= 0.1 / m.zoom
+			case "d":
+				m.panX += 0.1 / m.zoom
+			case "r":
+				m.zoom = 1.0
+				m.panX = 0
+				m.panY = 0
 			}
 		}
 	case tea.WindowSizeMsg:
@@ -197,8 +226,8 @@ func (m SkyModel) viewSky() string {
 
 	centerX := float64(skyW) / 2.0
 	centerY := float64(skyH) / 2.0
-	radiusX := centerX - 1
-	radiusY := centerY - 1
+	radiusX := (centerX - 1) * m.zoom
+	radiusY := (centerY - 1) * m.zoom
 
 	for _, s := range m.stars {
 		altRad := s.Alt * math.Pi / 180.0
@@ -208,8 +237,8 @@ func (m SkyModel) viewSky() string {
 		px := r * math.Sin(azRad)
 		py := -r * math.Cos(azRad)
 
-		x := int(centerX + px*radiusX)
-		y := int(centerY + py*radiusY)
+		x := int(centerX + (px-m.panX)*radiusX)
+		y := int(centerY + (py-m.panY)*radiusY)
 
 		if x < 0 || x >= skyW || y < 0 || y >= skyH {
 			continue
@@ -285,7 +314,7 @@ func (m SkyModel) viewSky() string {
 	sb.WriteRune('\n')
 
 	statusStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("245"))
-	status := " [←/→] magnitude  [s] screenshot  [esc] new location  [q] quit"
+	status := " [+/-] zoom  [wasd] pan  [r] reset  [←/→] magnitude  [p] screenshot  [esc] back  [q] quit"
 	if m.screenshot != "" {
 		status += "  | " + m.screenshot
 	}
@@ -309,6 +338,7 @@ func (m SkyModel) buildInfoPanel() string {
 	lines = append(lines, "")
 	lines = append(lines, label.Render("  Sky "))
 	lines = append(lines, dim.Render("  Stars:   ")+bright.Render(fmt.Sprintf("%d", len(m.stars))))
+	lines = append(lines, dim.Render("  Zoom:    ")+bright.Render(fmt.Sprintf("%.1fx", m.zoom)))
 	lines = append(lines, "")
 	lines = append(lines, label.Render("  Magnitude "))
 	lines = append(lines, dim.Render("  Max:     ")+bright.Render(fmt.Sprintf("%.1f", m.higerMag)))
